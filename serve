@@ -1,0 +1,42 @@
+#!/usr/bin/env python
+# serve.py - Optimized for SageMaker deployment
+
+import os
+import signal
+import subprocess
+import sys
+
+def sigterm_handler(gunicorn_pid):
+    try:
+        os.kill(gunicorn_pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    sys.exit(0)
+
+def start_server():
+    # Get number of workers (default to 2*CPU + 1)
+    workers = int(os.environ.get('GUNICORN_WORKERS', (os.cpu_count() * 2) + 1))
+    timeout = int(os.environ.get('GUNICORN_TIMEOUT', 70))
+    
+    print(f"Starting server with {workers} workers and {timeout}s timeout")
+    
+    # Start Gunicorn with Uvicorn workers
+    gunicorn = subprocess.Popen([
+        "gunicorn",
+        "--bind", "0.0.0.0:8080",
+        "--worker-class", "uvicorn.workers.UvicornWorker",
+        "--timeout", str(timeout),
+        "--workers", str(workers),
+        "sagemaker_serve:app"
+    ])
+    
+    # Handle SIGTERM from SageMaker
+    signal.signal(signal.SIGTERM, lambda a, b: sigterm_handler(gunicorn.pid))
+    
+    # Wait for Gunicorn to exit
+    return_code = gunicorn.wait()
+    print(f"Server exited with code {return_code}")
+    sys.exit(return_code)
+
+if __name__ == "__main__":
+    start_server()
