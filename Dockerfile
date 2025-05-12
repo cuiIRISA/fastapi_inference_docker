@@ -1,4 +1,5 @@
-FROM python:3.9-slim
+# Start with the PyTorch base image
+FROM pytorch/pytorch:1.12.1-cuda11.3-cudnn8-runtime
 
 # Install system dependencies for OpenCV
 RUN apt-get update && apt-get install -y \
@@ -7,12 +8,11 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies - only what's needed for inference
+# Note: torch and torchvision are already in the base image, so we can remove those
 RUN pip install --no-cache-dir \
     fastapi \
     uvicorn \
     gunicorn \
-    torch \
-    torchvision \
     ultralytics \
     opencv-python \
     pillow \
